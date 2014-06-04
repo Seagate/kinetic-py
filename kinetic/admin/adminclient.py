@@ -56,6 +56,13 @@ class AdminClient(baseclient.BaseClient):
     def updateFirmware(self, binary, pin=None):
         return self._process(operations.Setup, firmware=binary, pin=pin)
 
+    def setSecurity(self, userACLList):
+        """
+            Set the access control lists to lock users out of different permissions.
+            Arguments: aclList -> A list of ACL (Access Control List) objects.
+        """
+        return self._process(operations.Security, ACLList = userACLList)
+
 def main():
     from kinetic.common import LogTypes
     from kinetic import Client

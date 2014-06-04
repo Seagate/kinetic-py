@@ -133,6 +133,114 @@ class KineticMessageException(KineticException):
     def __str__(self):
         return self.code + (': %s' % self.value if self.value else '')
 
+class ACL(object):
+    #TODO: Implement offset and value restrictions, and make tlsRequired able to be set for each and every permission.
+    DEFAULT_KEY = "asdfasdf"
+    def __init__(self):
+        self.identity = 1
+        self.key = self.DEFAULT_KEY
+        self.hmacAlgorithm = IntegrityAlgorithms.SHA1
+        self.domains = set()
+
+    def setDomains(self, domains):
+        for d in domains:
+            assert(type(d) is Domain)
+        self.domains = set(domains)
+
+    def setIdentity(self, newIdent):
+        assert(type(newIdent) is int or type(newIdent) is long)
+        self.identity = newIdent
+
+    def setKey(self, newKey):
+        assert(type(newKey) is str)
+        self.key = newKey
+
+    def setHmacAlgorithm(self, newAlgo):
+        assert(newAlgo in [IntegrityAlgorithms.SHA1, IntegrityAlgorithms.SHA2, IntegrityAlgorithms.SHA3,
+                           IntegrityAlgorithms.CRC32, IntegrityAlgorithms.CRC64])
+        self.hmacAlgorithm = newAlgo
+
+    def getHmacAlgorithm(self):
+        return self.hmacAlgorithm
+
+    def getDomains(self):
+        return self.domains.copy()
+
+    def getIdentity(self):
+        return int(self.identity)
+
+    def getKey(self):
+        return str(self.key)
+
+class Domain(object):
+    """
+        Domain object, which corresponds to the domain object in the Java client,
+        and is the Scope object in the protobuf.
+    """
+    def __init__(self, roles=None, tlsRequried = False, offset=None, value=None):
+        if roles:
+            self.roles = set(roles)
+        else:
+            self.roles = set()
+        self.tlsRequired = tlsRequried
+        self.offset = offset
+        self.value = value
+
+    def setRoles(self, roles):
+        newRoles = set(roles)
+        for role in newRoles:
+            assert(role in Roles.all())
+        self.roles = newRoles
+
+    def setTlsRequired(self, newState):
+        assert(type(newState) is bool)
+        self.tlsRequired = newState
+
+    def setOffset(self, offset):
+        assert(type(offset) is int)
+        self.offset = offset
+
+    def setValue(self, value):
+        #TODO: Can this be string, byte array or both? Maybe add an assert check on this...
+        self.value = value
+
+    def getValue(self):
+        return self.value
+
+    def getOffset(self):
+        return self.offset
+
+    def getRoles(self):
+        return self.roles.copy()
+
+    def getTlsRequired(self):
+        return bool(self.tlsRequired)
+
+
+
+class Roles(object):
+    """
+        Role enumeration, which is the same thing as the permission field for each
+        scope in the protobuf ACL list.
+    """
+    READ = 0
+    WRITE = 1
+    DELETE = 2
+    RANGE = 3
+    SETUP = 4
+    P2POP = 5
+    GETLOG = 7
+    SECURITY = 8
+
+    @classmethod
+    def all(cls):
+        """
+            Return the set of all possible roles.
+        """
+        return [cls.READ, cls.WRITE, cls.DELETE, cls.RANGE, cls.SETUP, cls.P2POP, cls.GETLOG, cls.SECURITY]
+
+
+
 class Synchronization:
     SYNC = 1
     ASYNC = 2
@@ -164,3 +272,4 @@ class LogTypes:
             the sole argument to the AdminClient.getLog function.
         """
         return [cls.UTILIZATIONS, cls.TEMPERATURES, cls.CAPACITIES, cls.CONFIGURATION, cls.STATISTICS, cls.MESSAGES]
+

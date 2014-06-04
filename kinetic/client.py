@@ -52,6 +52,13 @@ class Client(BaseClient):
     def getMetadata(self, *args, **kwargs):
         return self._process(operations.GetMetadata, *args, **kwargs)
 
+    def getVersion(self, *args, **kwargs):
+        """
+            Arguments: key -> The key you are seeking version information for.
+            Returns a protobuf object with the version property that determines the pair's current version.
+        """
+        return self._process(operations.GetVersion, *args, **kwargs)
+
     def delete(self, *args, **kwargs):
         return self._process(operations.Delete, *args, **kwargs)
 

@@ -122,6 +122,31 @@ class GetMetadata(object):
     def onError(e):
         return Get.onError(e)
 
+class GetVersion(object):
+
+    @staticmethod
+    def build(key):
+        (m,_) = _buildMessage(messages.Message.GETVERSION, key)
+        m.command.body.keyValue.metadataOnly = True  # Get version only returns pair version, so perhaps this isn't needed?
+
+    @staticmethod
+    def parse(m, value):
+        try:
+            return Entry.fromResponse(m, value)
+        except KineticMessageException as e:
+            if e.code == 'NOT_FOUND':
+                # return None on NOT_FOUND; 'cause dict.get
+                return None
+            raise
+
+    @staticmethod
+    def onError(e):
+        if isinstance(e,KineticMessageException):
+            if e.code and e.code == 'NOT_FOUND':
+                return None
+        raise e
+
+
 class Delete(object):
 
     @staticmethod
@@ -374,6 +399,49 @@ class Setup(object):
             value = kwargs['firmware']
 
         return (m, value)
+
+    @staticmethod
+    def parse(m, value):
+        Entry.fromResponse(m, value)
+        return True
+
+    @staticmethod
+    def onError(e):
+        raise e
+
+
+class Security(object):
+    @staticmethod
+    def build(**kwargs):
+        m = messages.Message()
+        m.command.header.messageType = messages.Message.SECURITY
+
+        securityContainer = m.command.body.security
+        aclList = []
+        for userACL in kwargs['ACLList']:
+            assert(type(userACL) is common.ACL)
+            newACL = messages.Message.Security.ACL(identity=userACL.getIdentity(),
+                                                   key=userACL.getKey(),
+                                                   hmacAlgorithm=userACL.getHmacAlgorithm())
+            domainList = []
+
+            for userDomain in userACL.getDomains():
+                tlsRequired = userDomain.getTlsRequired()
+                newDomain = messages.Message.Security.ACL.Scope(TlsRequired=tlsRequired)
+
+                newDomain.permission.extend(userDomain.getRoles())
+                offset = userDomain.getOffset()
+                value = userDomain.getValue()
+                if offset:
+                    newDomain.offset = offset
+                if value:
+                    newDomain.value = value
+                domainList.append(newDomain)
+            newACL.scope.extend(domainList)
+            aclList.append(newACL)
+        securityContainer.acl.extend(aclList)
+
+        return (m, None)
 
     @staticmethod
     def parse(m, value):
