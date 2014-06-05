@@ -28,6 +28,9 @@ from threadedclient import ThreadedClient
 # common
 from common import KeyRange
 from common import Entry
+from common import ACL
+from common import Domain
+from common import Roles
 
 # exceptions
 from common import KineticMessageException

@@ -80,6 +80,9 @@ class KineticBasicTestCase(BaseTestCase):
         self.client.put(self.buildKey(2),"test_value_2")
         self.client.getPrevious(self.buildKey(2))
 
+    def test_command_getVersion(self):
+        self.client.getVersion(self.buildKey(0))
+
     def test_command_delete(self):
         self.client.delete(self.buildKey(0))
 

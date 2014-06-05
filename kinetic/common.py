@@ -144,20 +144,32 @@ class ACL(object):
 
     def setDomains(self, domains):
         for d in domains:
-            assert(type(d) is Domain)
+            try:
+                assert(type(d) is Domain)
+            except AssertionError:
+                raise TypeError('Each domain must be of type kinetic.common.Domain!')
         self.domains = set(domains)
 
     def setIdentity(self, newIdent):
-        assert(type(newIdent) is int or type(newIdent) is long)
+        try:
+            assert(type(newIdent) is int or type(newIdent) is long)
+        except AssertionError:
+            raise ValueError('New identity must be an int or long!')
         self.identity = newIdent
 
     def setKey(self, newKey):
-        assert(type(newKey) is str)
+        try:
+            assert(type(newKey) is str)
+        except AssertionError:
+            raise TypeError('New user key must be a string!')
         self.key = newKey
 
     def setHmacAlgorithm(self, newAlgo):
-        assert(newAlgo in [IntegrityAlgorithms.SHA1, IntegrityAlgorithms.SHA2, IntegrityAlgorithms.SHA3,
-                           IntegrityAlgorithms.CRC32, IntegrityAlgorithms.CRC64])
+        try:
+            assert(newAlgo in [IntegrityAlgorithms.SHA1, IntegrityAlgorithms.SHA2, IntegrityAlgorithms.SHA3,
+                               IntegrityAlgorithms.CRC32, IntegrityAlgorithms.CRC64])
+        except AssertionError:
+            raise TypeError('Invalid HMAC algorithm passed in! Must be declared in kinetic.common.IntegrityAlgorithms.')
         self.hmacAlgorithm = newAlgo
 
     def getHmacAlgorithm(self):
@@ -189,15 +201,24 @@ class Domain(object):
     def setRoles(self, roles):
         newRoles = set(roles)
         for role in newRoles:
-            assert(role in Roles.all())
+            try:
+                assert(role in Roles.all())
+            except AssertionError:
+                raise TypeError('Invalid object passed for role! Must be declared in kinetic.common.Roles.')
         self.roles = newRoles
 
     def setTlsRequired(self, newState):
-        assert(type(newState) is bool)
+        try:
+            assert(type(newState) is bool)
+        except AssertionError:
+            raise TypeError('TlsRequired must be a boolean!')
         self.tlsRequired = newState
 
     def setOffset(self, offset):
-        assert(type(offset) is int)
+        try:
+            assert(type(offset) is int)
+        except AssertionError:
+            raise TypeError('Offset must be an int!')
         self.offset = offset
 
     def setValue(self, value):
