@@ -381,9 +381,9 @@ class GetLog(object):
 
     @staticmethod
     def onError(e):
-        if isinstance(e,KineticMessageException):
-            if e.code and e.code == 'NOT_FOUND':
-                return None
+        #if isinstance(e,KineticMessageException):
+        #    if e.code and e.code == 'NOT_FOUND':
+        #        return None
         raise e
 
 class Setup(object):
