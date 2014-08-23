@@ -149,7 +149,8 @@ class BaseClient(object):
             try:
                 self._socket.shutdown(socket.SHUT_RDWR)
                 self._socket.close()
-            except: pass # if socket wasnt connected, keep going
+            except Exception as e: 
+                LOG.warning('Socket faulted on shutdown/close for {}.'.format(e))
         self._buff = ''
         self._socket = None
         self.connection_id = None
