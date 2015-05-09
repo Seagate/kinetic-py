@@ -23,6 +23,8 @@ from kinetic import KeyRange
 from kinetic import KineticMessageException
 from base import BaseTestCase
 from kinetic import common
+from kinetic.baseclient import BaseClient
+
 
 class KineticBasicTestCase(BaseTestCase):
 
@@ -216,6 +218,36 @@ class KineticBasicTestCase(BaseTestCase):
 
     def test_noop(self):
         self.client.noop()
+
+    def test_get_socket_options(self):
+        dict_sock_options = self.client.get_socket_options()
+        self.assertIsNotNone(dict_sock_options, "socket options should not be None")
+        if self.client.isConnected:
+            self.assertTrue(BaseClient.OPT_TCP_NODELAY in dict_sock_options)
+            self.assertTrue(BaseClient.OPT_IP_TOS in dict_sock_options)
+            self.assertTrue(BaseClient.OPT_SO_RCVBUF in dict_sock_options)
+            self.assertTrue(BaseClient.OPT_SO_SNDBUF in dict_sock_options)
+
+    def test_set_socket_options(self):
+        val_tcp_nodelay = 0
+        val_ip_tos = 3
+        val_so_sndbuf = 16384
+        val_so_rcvbuf = 8192
+
+        set_options = {}
+        set_options[BaseClient.OPT_TCP_NODELAY] = val_tcp_nodelay
+        set_options[BaseClient.OPT_IP_TOS] = val_ip_tos
+        set_options[BaseClient.OPT_SO_SNDBUF] = val_so_sndbuf
+        set_options[BaseClient.OPT_SO_RCVBUF] = val_so_rcvbuf
+
+        client = Client(self.host, self.port, socket_options=set_options)
+        client.connect()
+        get_options = client.get_socket_options()
+        self.assertIsNotNone(get_options)
+        self.assertEquals(get_options[BaseClient.OPT_TCP_NODELAY], val_tcp_nodelay)
+        self.assertEquals(get_options[BaseClient.OPT_IP_TOS], val_ip_tos)
+        self.assertGreaterEqual(get_options[BaseClient.OPT_SO_SNDBUF], val_so_sndbuf)
+        self.assertGreaterEqual(get_options[BaseClient.OPT_SO_RCVBUF], val_so_rcvbuf)
 
 if __name__ == '__main__':
     unittest.main()

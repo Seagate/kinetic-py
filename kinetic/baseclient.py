@@ -59,6 +59,13 @@ class BaseClient(object):
     # drive default
     USER_ID = 1
     CLIENT_SECRET = 'asdfasdf'
+    # socket options
+    TCP_NODELAY_VALUE = 1
+    OPT_TCP_NODELAY = 'TCP_NODELAY'
+    OPT_SO_SNDBUF = 'SO_SNDBUF'
+    OPT_SO_RCVBUF = 'SO_RCVBUF'
+    OPT_IP_TOS = 'IP_TOS'
+
 
     def __init__(self, hostname=HOSTNAME, port=PORT, identity=USER_ID,
                  cluster_version=None, secret=CLIENT_SECRET,
@@ -67,7 +74,7 @@ class BaseClient(object):
                  socket_timeout=common.DEFAULT_SOCKET_TIMEOUT,
                  socket_address=None, socket_port=0,
                  defer_read=False,
-                 use_ssl=False, pin=None):
+                 use_ssl=False, pin=None, **kwargs):
         self.hostname = hostname
         self.port = port
         self.identity = identity
@@ -87,6 +94,11 @@ class BaseClient(object):
         self.use_ssl = use_ssl
         self.pin = pin
         self.on_unsolicited = None
+
+        if len(kwargs) > 0 and 'socket_options' in kwargs:
+            self.socket_options = kwargs['socket_options']
+        else:
+            self.socket_options = None
 
     @property
     def socket(self):
@@ -115,13 +127,41 @@ class BaseClient(object):
         if self.use_ssl:
             s = self.wrap_secure_socket(s, ssl.PROTOCOL_TLSv1_2)
 
+        # set up our defaults
+        tcp_nodelay_value = BaseClient.TCP_NODELAY_VALUE
+
+        if self.socket_options is not None:
+            dict_options = self.socket_options
+            if BaseClient.OPT_TCP_NODELAY in dict_options:
+                tcp_nodelay_value = dict_options[BaseClient.OPT_TCP_NODELAY]
+                if tcp_nodelay_value != BaseClient.TCP_NODELAY_VALUE:
+                    LOG.info("Setting socket TCP NODELAY to " + str(tcp_nodelay_value))
+
+            if BaseClient.OPT_SO_SNDBUF in dict_options:
+                so_sndbuf_value = dict_options[BaseClient.OPT_SO_SNDBUF]
+                if so_sndbuf_value > 0:
+                    LOG.info("Setting socket send buffer size to " + str(so_sndbuf_value))
+                    s.setsockopt(ss.SOL_SOCKET, ss.SO_SNDBUF, so_sndbuf_value)
+
+            if BaseClient.OPT_SO_RCVBUF in dict_options:
+                so_rcvbuf_value = dict_options[BaseClient.OPT_SO_RCVBUF]
+                if so_rcvbuf_value > 0:
+                    LOG.info("Setting socket receive buffer size to " + str(so_rcvbuf_value))
+                    s.setsockopt(ss.SOL_SOCKET, ss.SO_RCVBUF, so_rcvbuf_value)
+
+            if BaseClient.OPT_IP_TOS in dict_options:
+                ip_tos_value = dict_options[BaseClient.OPT_IP_TOS]
+                if ip_tos_value >= 0:
+                    LOG.info("Setting IP TOS to " + str(ip_tos_value))
+                    s.setsockopt(ss.IPPROTO_IP, ss.IP_TOS, ip_tos_value)
+
         s.settimeout(self.connect_timeout)
         if self.socket_address:
             LOG.debug("Client local port address bound to " + self.socket_address)
             s.bind((self.socket_address, self.socket_port))
         # if connect fails, there is nothing to clean up
         s.connect(sockaddr) # use first
-        s.setsockopt(ss.IPPROTO_TCP, ss.TCP_NODELAY, 1)
+        s.setsockopt(ss.IPPROTO_TCP, ss.TCP_NODELAY, tcp_nodelay_value)
 
         # We are connected now, update attributes
         self._socket = s
@@ -362,6 +402,21 @@ class BaseClient(object):
                     LOG.warn('Unsolicited status %s received but nobody listening.' % cmd.status.code)
             else: done = True
         return m,cmd,value
+
+    def get_socket_options(self):
+        """
+        Retrieves current socket options.
+        :return: dictionary of options for socket connection, or empty dictionary if no socket connection exists.
+        """
+        dict_socket_options = {}
+
+        if self._socket is not None:
+            dict_socket_options[BaseClient.OPT_TCP_NODELAY] = self._socket.getsockopt(ss.IPPROTO_TCP, ss.TCP_NODELAY)
+            dict_socket_options[BaseClient.OPT_SO_SNDBUF] = self._socket.getsockopt(ss.SOL_SOCKET, ss.SO_SNDBUF)
+            dict_socket_options[BaseClient.OPT_SO_RCVBUF] = self._socket.getsockopt(ss.SOL_SOCKET, ss.SO_RCVBUF)
+            dict_socket_options[BaseClient.OPT_IP_TOS] = self._socket.getsockopt(ss.IPPROTO_IP, ss.IP_TOS)
+
+        return dict_socket_options
 
     ### with statement support ###
 
