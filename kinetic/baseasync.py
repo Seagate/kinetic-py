@@ -67,7 +67,7 @@ class BaseAsync(deprecated.BlockingClient):
         self.error = e
         self.faulted = True
         LOG.error("Connection {0} faulted. {1}".format(self,e))
-        for _,onError in self._pending.itervalues():
+        for _,onError,_ in self._pending.itervalues():
             try:
                 onError(e)
             except Exception as e2:
@@ -93,10 +93,10 @@ class BaseAsync(deprecated.BlockingClient):
                 seq = resp.header.ackSequence
                 if LOG.isEnabledFor(logging.DEBUG):
                     LOG.debug("Received message with ackSequence={0} on connection {1}.".format(seq,self))
-                onSuccess,_ = self._pending[seq]
+                onSuccess,_,arg = self._pending[seq]
                 del self._pending[seq]
                 try:
-                    self.dispatch(onSuccess, m, resp, value)
+                    self.dispatch(onSuccess, m, resp, value, arg)
                 except Exception as e:
                     self._raise(e)
         except Exception as e:
@@ -142,20 +142,31 @@ class BaseAsync(deprecated.BlockingClient):
             self._raise(common.NotConnected("Not connected."), onError)
             return #skip the rest
 
-        def innerSuccess(m, response, value):
+        def innerSuccess(m, response, value, *args, **kwargs):
             try:
                 operations._check_status(response)
                 onSuccess(m, response, value)
             except Exception as ex:
                 onError(ex)
+         
+        def setClusterversionCallback(m, response, value, version):
+            try:
+                operations._check_status(response)
+                onSuccess(m, response, value)
+                self.cluster_version = version
 
+            except Exception as ex:
+                onError(ex)
         # get sequence
         self.update_header(command)
 
         if not no_ack:
             # add callback to pending dictionary
             self._pending[command.header.sequence] = (innerSuccess, onError)
-
+            if command.body.setup.newClusterVersion:
+               self._pending[command.header.sequence] = (setClusterversionCallback, onError, command.body.setup.newClusterVersion)
+            else:
+               self._pending[command.header.sequence] = (innerSuccess, onError, None)
         # transmit
         self.network_send(command, value)
 
